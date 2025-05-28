@@ -6,7 +6,7 @@
 #    By: sniemela <sniemela@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/05/21 12:37:52 by sniemela          #+#    #+#              #
-#    Updated: 2025/05/22 09:48:24 by sniemela         ###   ########.fr        #
+#    Updated: 2025/05/28 15:59:44 by sniemela         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -29,7 +29,8 @@ WEBSERV			= echo "🔗 $(YELLOW)Linking webserv...$(RESET)"
 NAME = webserv
 CPPFLAGS = -Wall -Werror -Wextra -std=c++11
 CPP = c++
-SOURCES = src/main.cpp 
+SOURCES = src/main.cpp \
+			src/ConfigParser.cpp
 
 SRCDIR = src
 OBJDIR = obj
