@@ -6,7 +6,7 @@
 #    By: sniemela <sniemela@student.hive.fi>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/05/21 12:37:52 by sniemela          #+#    #+#              #
-#    Updated: 2025/05/28 15:59:44 by sniemela         ###   ########.fr        #
+#    Updated: 2025/05/29 12:22:28 by sniemela         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -30,7 +30,9 @@ NAME = webserv
 CPPFLAGS = -Wall -Werror -Wextra -std=c++11
 CPP = c++
 SOURCES = src/main.cpp \
-			src/ConfigParser.cpp
+			src/ConfigParser.cpp \
+			src/Client.cpp
+HEADERS = inc/Client.hpp
 
 SRCDIR = src
 OBJDIR = obj
@@ -39,7 +41,7 @@ OBJS = $(SOURCES:%.c=$(OBJDIR)/%.o)
 all: $(NAME)
 
 
-$(NAME): $(OBJS) 
+$(NAME): $(OBJS) $(HEADERS)
 	@$(CUB3D)
 	@$(CPP) $(CFLAGS) $(OBJS) -o $(NAME)
 	@$(X_READY)
@@ -47,7 +49,7 @@ $(NAME): $(OBJS)
 $(OBJDIR):
 	@mkdir -p $(OBJDIR)
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
+$(OBJDIR)/%.o: $(SRCDIR)/%.c $(HEADERS) | $(OBJDIR)
 	@mkdir -p $(dir $@)
 	@$(CPP) $(CFLAGS) -c $< -o $@
 	@$(OBJ_READY)
