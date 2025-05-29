@@ -1,9 +1,21 @@
 #include "../inc/event_loop.hpp"
+#include <asm-generic/socket.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 int eventLoop(void)
 {
 	int epoll_fd = epoll_create1(0);
 	int socket_fd = socket(AF_INET, (SOCK_STREAM | SOCK_NONBLOCK), 0);
+
+	// SO_REUSEADDR prevents bind() from failing when restarting the server 
+	// quickly. SOL_SOCKET is not really an option.
+	int option;
+	setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+
+	// close the socket when an execve() happens
+	fcntl(socket_fd, F_SETFL, FD_CLOEXEC);
 
 	// Set the address for the socket
 	sockaddr_in serv_addr{};				// Struct for defining socket address
@@ -13,6 +25,8 @@ int eventLoop(void)
 
 	// Bind the address to the socket
 	bind(socket_fd, reinterpret_cast<sockaddr *>(&serv_addr), sizeof(serv_addr));
+
+
 	// Socket is ready to listen to incoming connection requests
 	listen(socket_fd, 256); // 256 is the max number of connections
 
@@ -48,7 +62,8 @@ int eventLoop(void)
 				// reuse e_event. In other words; the contents of e_event are
 				// only relevant for epoll_ctl()
 				// Here we add new connection to the interest list
-				e_event.events = EPOLLIN | EPOLLET;
+				// e_event.events = EPOLLIN | EPOLLET;
+				e_event.events = EPOLLIN;
 				e_event.data.fd = client_fd;
 				epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &e_event);
 			}
@@ -62,10 +77,10 @@ int eventLoop(void)
 				std::cout << " client fd: " << curr_event_fd << std::endl;
 
 				if (events[i].events & EPOLLIN) {
-					clients[curr_event_fd].recvFrom();
+					clients[curr_event_fd].recvFrom(epoll_fd);
 				}
 				if (events[i].events & EPOLLOUT) {
-//					clients[curr_event_fd].sendTo();
+					clients[curr_event_fd].sendTo(epoll_fd);
 				}
 
 			}

@@ -11,8 +11,8 @@ class Client {
 public:
 	Client(int fd = -1);
 
-	void recvFrom();
-	void sendTo(std::string response);
+	void recvFrom(int epoll_fd);
+	void sendTo(int epoll_fd);
 
 private:
 	int			fd;
