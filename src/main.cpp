@@ -6,6 +6,9 @@
 #include "../inc/Client.hpp"
 
 #include "ConfigParser.cpp"
+#include "../inc/StandardLibraries.hpp"
+#include "../inc/Structs.hpp"
+#include "../inc/Webserv.hpp"
 
 int	mvp(void)
 {
@@ -84,29 +87,29 @@ int	mvp(void)
 	return 0;
 }
 
-// int	main(int argc, char **argv)
-// {
-// 	(void)argc;
-// 	(void)argv;
-// 	// if (argc != 2 || std::string(argv[1]) != "configuration/webserv.conf")
-// 	// {
-// 	// 	std::cout << "\nRun with \"./webserv configuration/webserv.conf\"" << std::endl;
-// 	// 	return (1);
-// 	// }
-// 	mvp();
-// 	return (0);
-// }
-
 int	main(int argc, char **argv)
 {
-	// (void)argc;
-	// (void)argv;
-	if (argc != 2 || std::string(argv[1]) != "configuration/webserv.conf")
-	{
-		std::cout << "\nRun with \"./webserv configuration/webserv.conf\"" << std::endl;
-		return (1);
-	}
-	configParser(argv[1]);
-	// mvp();
+	(void)argc;
+	(void)argv;
+	// if (argc != 2 || std::string(argv[1]) != "configuration/webserv.conf")
+	// {
+	// 	std::cout << "\nRun with \"./webserv configuration/webserv.conf\"" << std::endl;
+	// 	return (1);
+	// }
+	mvp();
 	return (0);
 }
+
+// int	main(int argc, char **argv)
+// {
+// 	// (void)argc;
+// 	// (void)argv;
+// 	if (argc != 2 || std::string(argv[1]) != "configuration/webserv.conf")
+// 	{
+// 		std::cout << "\nRun with \"./webserv configuration/webserv.conf\"" << std::endl;
+// 		return (1);
+// 	}
+// 	configParser(argv[1]);
+// 	// mvp();
+// 	return (0);
+// }
