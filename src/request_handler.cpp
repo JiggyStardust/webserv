@@ -54,7 +54,7 @@ bool ends_with(const std::string& str, const std::string& suffix) {
            str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
 }
 
-Response getResponse(std::string request) {
+Response getResponse(std::string request, ServerConfig config) {
 	Response response;
 
 	std::istringstream iss(request);
@@ -70,16 +70,15 @@ Response getResponse(std::string request) {
 
 	if (response.method == "GET") {
 		if (response.path == "/") {
-			createBody(&response, root + "/index.html");
+			setStatusCode(&response, 200, "200 OK");
+			createBody(&response, "www/form.html");
 			createHeader(&response, "text/html; charset=UTF-8");
 			response.full_response = response.header + response.body;
 			return response;
 		}
-		else {
-			createBody(&response, root + response.path);
-		}
-		if (ends_with(response.path, ".png")){
-			
+		else if (ends_with(response.path, ".png")){
+			setStatusCode(&response, 200, "200 OK");
+			createBody(&response, "www/potato_chip.png");
 			createHeader(&response, "image/png");
 		}
 		else if (ends_with(response.path, ".jpg")){
