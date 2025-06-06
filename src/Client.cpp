@@ -51,10 +51,6 @@ static t_method getRequestMethod(std::string request) {
 	}
 }
 
-static int getContentLength(std::string request) {
-	return 30;
-}
-
 void Client::handleCompleteRequest(int end) {
 	std::cout << "##### RECEIVED REQUEST #####" << std::endl;
 	std::cout << recv_buf << std::endl;
@@ -77,7 +73,7 @@ void Client::handleCompleteRequest(int end) {
 void Client::recvFrom() {
 	// sleep(1);
 	//std::cout << "entered recvFrom" << std::endl;
-	char buf[1000] = {0};
+	char buf[20] = {0};
 	std::string header_end = "\r\n\r\n";
 
 	int bytes_read = recv(fd, buf, sizeof(buf) -1, MSG_DONTWAIT);
@@ -106,7 +102,7 @@ void Client::recvFrom() {
 			handleCompleteRequest(end);
 
 		} else if (method == POST) {
-			int content_length = getContentLength(recv_buf);
+			int content_length = getPostContentLength(recv_buf);
 			if (recv_buf.length() >= end + content_length) {
 				std::cout << "Buf: " << recv_buf.length() << " target: "\
 					<< end << " + " << content_length << std::endl;

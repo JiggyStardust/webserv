@@ -21,4 +21,5 @@ struct Response {
 	bool connection_is_close = false;
 };
 
+int getPostContentLength (std::string request);
 Response getResponse(std::string request, ServerConfig config);
