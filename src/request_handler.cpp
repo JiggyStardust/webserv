@@ -70,15 +70,16 @@ Response getResponse(std::string request, ServerConfig config) {
 
 	if (response.method == "GET") {
 		if (response.path == "/") {
-			setStatusCode(&response, 200, "200 OK");
-			createBody(&response, "www/form.html");
+			createBody(&response, root + "/index.html");
 			createHeader(&response, "text/html; charset=UTF-8");
 			response.full_response = response.header + response.body;
 			return response;
 		}
-		else if (ends_with(response.path, ".png")){
-			setStatusCode(&response, 200, "200 OK");
-			createBody(&response, "www/potato_chip.png");
+		else {
+			createBody(&response, root + response.path);
+		}
+		if (ends_with(response.path, ".png")){
+			
 			createHeader(&response, "image/png");
 		}
 		else if (ends_with(response.path, ".jpg")){
