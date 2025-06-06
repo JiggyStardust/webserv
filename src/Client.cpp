@@ -86,6 +86,8 @@ void Client::recvFrom() {
 		std::cerr << "recvFrom() returned -1" << std::endl;
 		return ;
 	}
+	// this is possibly correct, i.e. EPOLLHUP is not needed because there is
+	// an event anyway when the client closes the connection
 	if (bytes_read == 0) {
 		std::cout << "recvFrom(): read 0 bytes" << std::endl;
 		closeConnection(epoll_fd, fd);
@@ -102,6 +104,8 @@ void Client::recvFrom() {
 			handleCompleteRequest(end);
 
 		} else if (method == POST) {
+			// TODO: would it be ok to try to receive everything and then
+			// later check if POST is even allowed
 			int content_length = getPostContentLength(recv_buf);
 			if (recv_buf.length() >= end + content_length) {
 				std::cout << "Buf: " << recv_buf.length() << " target: "\
