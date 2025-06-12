@@ -21,7 +21,7 @@ struct ServerConfig
 	std::string listen_ip;
 	int			listen_port;
 	std::map<int, std::string> error_pages;
-	size_t		client_max_body_size;
+	size_t		client_max_body_size = 1000000;
 	std::vector<LocationConfig> locations;
 };
 

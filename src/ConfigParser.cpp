@@ -13,61 +13,59 @@ void printServerConfigs(const std::vector<ServerConfig> &servers)
 	for (size_t i = 0; i < servers.size(); ++i)
 	{
 		const ServerConfig &server = servers[i];
-		//std::cout << "======== SERVER " << i + 1 << " ========" << std::endl;
+		std::cout << "======== SERVER " << i + 1 << " ========" << std::endl;
 
-		// Server names
-		//std::cout << "Server Names: ";
-		//for (size_t j = 0; j < server.server_names.size(); ++j)
-		//{
-			//std::cout << server.server_names[j];
-			//if (j + 1 < server.server_names.size())
-				//std::cout << ", ";
-		//}
-		//std::cout << std::endl;
+	//	Server names
+		std::cout << "Server Names: ";
+		for (size_t j = 0; j < server.server_names.size(); ++j)
+		{
+			std::cout << server.server_names[j];
+			if (j + 1 < server.server_names.size())
+				std::cout << ", ";
+		}
+		std::cout << std::endl;
 
-		// Listen IP/Port
-		//std::cout << "Listen IP: " << server.listen_ip << std::endl;
-		//std::cout << "Listen Port: " << server.listen_port << std::endl;
+//		Listen IP/Port
+		std::cout << "Listen IP: " << server.listen_ip << std::endl;
+		std::cout << "Listen Port: " << server.listen_port << std::endl;
 
-		// Error pages
-		//std::cout << "Error Pages:" << std::endl;
+//		Error pages
+		std::cout << "Error Pages:" << std::endl;
 		for (std::map<int, std::string>::const_iterator it = server.error_pages.begin(); it != server.error_pages.end(); ++it)
 		{
-			//std::cout << "  " << it->first << " => " << it->second << std::endl;
+			std::cout << "  " << it->first << " => " << it->second << std::endl;
 		}
 
-		// Client max body size
-		//std::cout << "Client Max Body Size: " << server.client_max_body_size << std::endl;
+//		Client max body size
+		std::cout << "Client Max Body Size: " << server.client_max_body_size << std::endl;
 
-		// Locations
-		//std::cout << "Locations: " << std::endl;
+	//	Locations
+		std::cout << "Locations: " << std::endl;
 		for (size_t k = 0; k < server.locations.size(); ++k)
 		{
 			const LocationConfig &loc = server.locations[k];
-			//std::cout << "  --- Location " << k + 1 << " ---" << std::endl;
-			//std::cout << "  Path: " << loc.path << std::endl;
-			//std::cout << "  Root: " << loc.root << std::endl;
-			//std::cout << "  Index: " << loc.index << std::endl;
-			//std::cout << "  Methods: ";
-			//for (size_t m = 0; m < loc.methods.size(); ++m)
-			//{
-				//std::cout << loc.methods[m];
-				//if (m + 1 < loc.methods.size())
-					//std::cout << ", ";
-			//}
-			//std::cout << std::endl;
-			//std::cout << "  Autoindex: " << (loc.autoindex ? "on" : "off") << std::endl;
-			//std::cout << "  Upload Store: " << loc.upload_store << std::endl;
+			std::cout << "  --- Location " << k + 1 << " ---" << std::endl;
+			std::cout << "  Path: " << loc.path << std::endl;
+			std::cout << "  Root: " << loc.root << std::endl;
+			std::cout << "  Index: " << loc.index << std::endl;
+			std::cout << "  Methods: ";
+			for (size_t m = 0; m < loc.methods.size(); ++m)
+			{
+				std::cout << loc.methods[m];
+				if (m + 1 < loc.methods.size())
+					std::cout << ", ";
+			}
+			std::cout << std::endl;
+			std::cout << "  Autoindex: " << (loc.autoindex ? "on" : "off") << std::endl;
+			std::cout << "  Upload Store: " << loc.upload_store << std::endl;
 			if (loc.return_code != 0 || !loc.return_url.empty())
 			{
-				//std::cout << "  Return: " << loc.return_code << " " << loc.return_url << std::endl;
+				std::cout << "  Return: " << loc.return_code << " " << loc.return_url << std::endl;
 			}
 		}
-		//std::cout << std::endl;
+		std::cout << std::endl;
 	}
 }
-
-
 
 std::string	trimComments(const std::string &line)
 {
@@ -167,31 +165,102 @@ LocationConfig	parseLocationConfig(std::vector<std::string> &config, std::vector
 
 }
 
-size_t	parseClientBodySize(std::string &client_max_size)
+size_t	parseClientBodySize(std::string &client_max_size) // need to adjust this to work with bytes, not SI
 {
 	int	coefficient = 1;
 
 	if (client_max_size.find("K") != std::string::npos)
 	{
-		coefficient = 1000;
+		coefficient = 1024;
 	}
 	else if (client_max_size.find("M") != std::string::npos)
 	{
-		coefficient = 1000000;
+		coefficient = 1024 * 1024;
 	}
 	else if (client_max_size.find("G") != std::string::npos)
 	{
-		coefficient = 1000000000;
+		coefficient = 1024 * 1024 * 1024;
 	}
-	return (std::stol(client_max_size) * coefficient); // add overflow handling later
+	return (std::stol(client_max_size) * coefficient); // add overflow handling later?
 }
 
-// parse individual server here and return it as ServerConfig
-// this function is called once we're already inside a server block (so "server { " is passed.)
-// in a loop:
-	// if "}" is encountered, break / return
+void	validateListen(const std::string &ip_port)
+{
+	std::regex valid_ip(R"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\:\d{1,5}\;)"); // 1-3digits.1-3digits.1-3.digits.1-3digits:1-5digits;
+	if (!std::regex_match(ip_port, valid_ip))
+	{
+		throw std::runtime_error ("config file: listen IP and port in wrong format.");
+	}
+}
 
-ServerConfig parseIndividualServer(std::vector<std::string> &config, std::vector<std::string>::iterator it)
+// I don't know if there's any rules regarding the servers naming other than directives have to end with semicolon
+void validateServerName(const std::string &name)
+{
+	if (name.back() != ';')
+	{
+		throw std::runtime_error("config file: server_name directive missing semicolon");
+	}
+	if (name.find(';') != name.size() - 1)
+	{
+		throw std::runtime_error("config file: server_name directive contains excessive semicolon");
+	}
+}
+
+void	validateBodySize(std::string &client_body, std::istringstream &iss)
+{
+	if (client_body.back() != ';')
+	{
+		throw std::runtime_error("config file: client_max_body_size directive missing semicolon");
+	}
+	if (client_body.find(';') != client_body.size() - 1)
+	{
+		throw std::runtime_error("config file: client_max_body_size directive contains excessive semicolon");
+	}
+	client_body.pop_back();
+	std::regex valid_body_size(R"(^\d{1,10}$|^\d{1,7}[kK]$|^\d{1,4}[mM]$)");
+
+	if (!std::regex_match(client_body, valid_body_size))
+	{
+		throw std::runtime_error("config file: client_max_body_size doesn't match requirements");
+	}
+	if (iss >> client_body)
+	{
+		throw std::runtime_error("config file: client_max_body_size contains excessive info");
+	}
+}
+
+void	validateAndParseErrorPage(std::istringstream &iss, ServerConfig &server)
+{
+	std::string error_code;
+	std::string error_html;
+
+	(void)server;
+	iss >> error_code;
+	if (!std::regex_match(error_code, std::regex(R"(^\d{3}$)")))
+	{
+		throw std::runtime_error ("config file: invalid error_page code: " + error_code);
+	}
+	int code = std::stoi(error_code);
+	iss >> error_html;
+	if (error_html.empty() || error_html.back() != ';')
+	{
+		throw std::runtime_error("config file: error_page " + error_code + " file path missing");
+	}
+	if (error_html.find(';') != error_html.size() - 1)
+	{
+		throw std::runtime_error("config file: error_page " + error_code + " not ending with (one) semicolon");
+	}
+	error_html.pop_back();
+	std::ifstream test("./" + error_html);
+	if (!test)
+	{
+		throw std::runtime_error("config file: error_page " + error_code + " not a valid path");
+	}
+	test.close();
+	server.error_pages[code] = error_html;
+}
+
+ServerConfig parseIndividualServer(std::vector<std::string> &config, std::vector<std::string>::iterator &it)
 {
 	ServerConfig	server;
 	std::string		key;
@@ -210,21 +279,21 @@ ServerConfig parseIndividualServer(std::vector<std::string> &config, std::vector
 		iss >> key;
 		if (key == "listen")
 		{
-	//		//std::cout << "LISTEN FOUND!" << std::endl;
 			std::string ip_port;
 			iss >> ip_port;
+			validateListen(ip_port);
+			ip_port.pop_back();
 			size_t colon = ip_port.find(":");
 			if (colon == std::string::npos)
 			{
-				throw std::runtime_error("IP address missing colon");
+				throw std::runtime_error("config file: IP address missing colon");
 			}
 			server.listen_ip = ip_port.substr(0, colon);
 			server.listen_port = std::stoi(ip_port.substr(colon + 1));
-	//		//std::cout << "IP: " << server.listen_ip << "|\nPORT: " << server.listen_port << "|"<< std::endl;
 		}
 		else if (key == "server_name")
 		{
-		//	//std::cout << "SERVER_NAME FOUND!" << std::endl;
+			validateServerName(*it);
 			std::string name;
 			while (iss >> name)
 			{
@@ -236,33 +305,17 @@ ServerConfig parseIndividualServer(std::vector<std::string> &config, std::vector
 				}
 				server.server_names.push_back(name);
 			}
-			// for (size_t i = 0; i < server.server_names.size(); ++i)
-			// {
-			// 	//std::cout << "SERVER_NAME[" << i << "]: " << server.server_names[i] << std::endl;
-			// }
 		}
 		else if (key == "client_max_body_size")
 		{
-		//	//std::cout << "CLIENT_MAX_BODY_SIZE FOUND!" << std::endl;
-			std::string client_max_size;
-			iss >> client_max_size;
-			server.client_max_body_size = parseClientBodySize(client_max_size);
-		//	//std::cout << "client_max_body_size: " << server.client_max_body_size << std::endl;
+			std::string max_size;
+			iss >> max_size;
+			validateBodySize(max_size, iss);
+			server.client_max_body_size = parseClientBodySize(max_size);
 		}
 		else if (key == "error_page")
 		{
-		//	//std::cout << "ERROR_PAGE FOUND!" << std::endl;
-			int	code;
-			std::string error_page;
-			iss >> code;
-			iss >> error_page;
-			error_page.pop_back();
-			server.error_pages[code] = error_page;
-		//	//std::cout << "ERROR_PAGES MAP IS: \n";
-    		// for (const auto& pair : server.error_pages)
-			// {
-       		// 	//std::cout << "int: " << pair.first << "\nurl: " << pair.second << "\n";
-   			// }
+			validateAndParseErrorPage(iss, server);
 		}
 		else if (key == "location")
 		{
@@ -271,32 +324,53 @@ ServerConfig parseIndividualServer(std::vector<std::string> &config, std::vector
 			iss >> location;
 			server.locations.push_back(parseLocationConfig(config, it, location));
 		}
+		else
+		{
+			throw std::runtime_error("config file:\n\tserver block:\n\t\tunrecognised: " + *it);
+		}
 		it++;
 	}
 	return (server);
 }
 
+void	validateServerStatement( std::vector<std::string>::iterator &it)
+{
+	if (it->find_first_not_of("server") < 6)
+	{
+		throw std::runtime_error("config file:\nunexpected characters before server block statement");
+	}
+	std::string rest = it->substr(6,6);
+	size_t	brace_pos = rest.find_first_not_of(" \t");
+	if (rest[brace_pos] != '{')
+	{	
+		throw std::runtime_error("config file:\nserver block statement should be followed by '{'");
+	}
+	if (rest.find_first_not_of(" \t", brace_pos + 1) != std::string::npos)
+	{
+		throw std::runtime_error("config file:\nunexpected characters after '{' in server block");
+	}
+}
+
 std::vector<ServerConfig> parseServers(std::vector<std::string> &config)
 {
-	// return a vector of ServerConfigs
-	// search for server blocks (there might be many) and  and push_back the return value of ParseServer(parse individual server).
-	// here we already skip comments and spaces from beginning and end
-
 	std::vector<ServerConfig> servers;
 	std::string	line;
 	
-	//std::cout << line << std::endl;
 	for (std::vector<std::string>::iterator it = config.begin() ; it != config.end(); ++it)
 	{
-		if (*it == "server" || *it == "server {") // handle this later so that it has already passed '{' before calling parseIndividualServer()
+	//	std::cout << "it: " << *it << std::endl;
+		if (it->find("server") != std::string::npos)
 		{
-	//		//std::cout << "SERVER FOUND!" << std::endl;
+			validateServerStatement(it);
 			it++;
 			servers.push_back(parseIndividualServer(config, it));
 		}
+		else
+		{
+			throw std::runtime_error("config file: malformed");
+		}
 	}
 	return (servers);
-
 }
 
 std::vector<std::string> trimConfigToVector(std::ifstream &config_file)
@@ -321,23 +395,66 @@ std::vector<std::string> trimConfigToVector(std::ifstream &config_file)
 	return (config_vector);
 }
 
+void validateBraces(std::vector<std::string> &config)
+{
+	int opening_brace = 0;
+	int closing_brace = 0;
+
+	for (std::vector<std::string>::iterator it = config.begin() ; it != config.end(); ++it)
+	{
+		for (char ch: (*it))
+		{
+			if (ch == '{')
+			{
+				opening_brace++;
+			}
+			else if (ch == '}')
+			{
+				closing_brace++;
+				if (opening_brace < closing_brace)
+				{
+					throw std::runtime_error("config file:\nunmatching closing brace '}'");
+				}
+			}
+		}
+	}
+	if (opening_brace < closing_brace)
+	{
+		throw std::runtime_error("config file:\nunmatching closing brace '}'");
+	}
+	if (opening_brace > closing_brace)
+	{
+		throw std::runtime_error("config file:\nunmatching opening brace '{'");
+	}
+}
+
 std::vector<ServerConfig> configParser(char *path_to_config)
 {
 	struct ConfigFile;
 	std::vector<std::string> trimmed_config;
 
+	if (std::filesystem::path(path_to_config).extension() != ".conf")
+	{
+		throw std::runtime_error("config file: extension not matching .conf");
+	}
 	std::ifstream config_file(path_to_config);
 	if (!config_file)
 	{
 		throw std::runtime_error("Opening config file");
 	}
 	trimmed_config = trimConfigToVector(config_file);
-	// //std::cout << "Trimmed vector:\n";
+	// std::cout << "Trimmed vector:\n";
 	// for (std::vector<std::string>::iterator it = trimmed_config.begin() ; it != trimmed_config.end(); ++it)
-	// 	//std::cout << *it << "|\n";
+	// 	std::cout << *it << "|\n";
 	config_file.close();
+	validateBraces(trimmed_config);
 	std::vector<ServerConfig> servers = parseServers(trimmed_config);
-	//printServerConfigs(servers);
+	if (servers.empty())
+	{
+		throw std::runtime_error("config file: no valid server information configured");
+	}
+	// std::cout << "PRINTING SERVERS\n";
+	// printServerConfigs(servers);
 	return servers;
 }
 
