@@ -193,18 +193,6 @@ void	validateListen(const std::string &ip_port)
 	}
 }
 
-// I don't know if there's any rules regarding the servers naming other than directives have to end with semicolon
-void validateServerName(const std::string &name)
-{
-	if (name.back() != ';')
-	{
-		throw std::runtime_error("config file: server_name directive missing semicolon");
-	}
-	if (name.find(';') != name.size() - 1)
-	{
-		throw std::runtime_error("config file: server_name directive contains excessive semicolon");
-	}
-}
 
 void	validateBodySize(std::string &client_body, std::istringstream &iss)
 {
@@ -260,6 +248,46 @@ void	validateAndParseErrorPage(std::istringstream &iss, ServerConfig &server)
 	server.error_pages[code] = error_html;
 }
 
+void validateAndParseServerName(std::string &line, std::istringstream &iss, ServerConfig &server)
+{
+	if (server.server_names.size() != 0)
+	{
+		throw std::runtime_error("config file: conflicting/multiple server_name directives");
+	}
+	if (line.back() != ';')
+	{
+		throw std::runtime_error("config file: server_name directive missing semicolon");
+	}
+	if (line.find(';') != line.size() - 1)
+	{
+		throw std::runtime_error("config file: server_name directive contains excessive semicolon");
+	}
+	std::string name;
+	while (iss >> name)
+	{
+		if (!name.empty() && name.back() == ';')
+		{
+			name.pop_back();
+			server.server_names.push_back(name);
+			break;
+		}
+		server.server_names.push_back(name);
+	}
+}
+
+void	parseListen(std::string &ip_port, ServerConfig &server)
+{
+	ip_port.pop_back();
+	size_t colon = ip_port.find(":");
+
+	if (colon == std::string::npos) // shouldn't happend since we already validated
+	{
+		throw std::runtime_error("config file: IP address missing colon");
+	}
+	server.listen_ip = ip_port.substr(0, colon);
+	server.listen_port = std::stoi(ip_port.substr(colon + 1));
+}
+
 ServerConfig parseIndividualServer(std::vector<std::string> &config, std::vector<std::string>::iterator &it)
 {
 	ServerConfig	server;
@@ -282,29 +310,11 @@ ServerConfig parseIndividualServer(std::vector<std::string> &config, std::vector
 			std::string ip_port;
 			iss >> ip_port;
 			validateListen(ip_port);
-			ip_port.pop_back();
-			size_t colon = ip_port.find(":");
-			if (colon == std::string::npos)
-			{
-				throw std::runtime_error("config file: IP address missing colon");
-			}
-			server.listen_ip = ip_port.substr(0, colon);
-			server.listen_port = std::stoi(ip_port.substr(colon + 1));
+			parseListen(ip_port, server);
 		}
 		else if (key == "server_name")
 		{
-			validateServerName(*it);
-			std::string name;
-			while (iss >> name)
-			{
-				if (!name.empty() && name.back() == ';')
-				{
-					name.pop_back();
-					server.server_names.push_back(name);
-					break;
-				}
-				server.server_names.push_back(name);
-			}
+			validateAndParseServerName(*it, iss, server);
 		}
 		else if (key == "client_max_body_size")
 		{
@@ -453,8 +463,8 @@ std::vector<ServerConfig> configParser(char *path_to_config)
 	{
 		throw std::runtime_error("config file: no valid server information configured");
 	}
-	// std::cout << "PRINTING SERVERS\n";
-	// printServerConfigs(servers);
+	std::cout << "PRINTING SERVERS\n";
+	printServerConfigs(servers);
 	return servers;
 }
 
