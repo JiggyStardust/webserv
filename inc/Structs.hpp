@@ -8,10 +8,10 @@ struct LocationConfig
 	std::string	root;
 	std::string	index;
 	std::vector<std::string> methods;
-	bool		autoindex;
+	bool		autoindex = false;
 	std::string	upload_store; // not sure if a good name
-	int			return_code;
-	std::string return_url;
+	int			return_code = 0;
+	std::string return_url = "";
 	// stuff for the cgi later cause no idea yet
 };
 

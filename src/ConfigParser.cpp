@@ -89,59 +89,200 @@ std::string	trimBeginningAndEnd(const std::string &line)
 	return (line.substr(start, end - start + 1));
 }
 
-LocationConfig	parseLocationConfig(std::vector<std::string> &config, std::vector<std::string>::iterator &it, std::string &path)
+// ONCE ROOT IS KNOWN AND COMPLETE PATH AVAILABLE FOR TESTING, TRY TO OPEN THE LOCATION
+
+std::string	validateAndParseLocationPath(std::istringstream &iss, std::string &line)
+{
+	std::string path;
+
+	iss >> path;
+
+	/*	validating the location statement line	 */
+	if (line.back() != '{')
+	{
+		throw std::runtime_error("config file: location" + path + " block missing '{' after declaration");
+	}
+	if (line.find('{') != line.size() - 1)
+	{
+		throw std::runtime_error("config file: location" + path + " contains excessive '{'");
+	}
+	if (line.find(';') != std::string::npos)
+	{
+		throw std::runtime_error("config file: location statement for " + path + " contains forbidden character ';'");
+	}
+	/*	checking that '{' is separate from the location path	 */
+	if (path.find('{') != std::string::npos)
+	{
+		throw std::runtime_error("config file: location statement for " + path + " attached to '{'");
+	}
+	if (path.find('/') != 0)
+	{
+		throw std::runtime_error("config file: location " + path + " should start with '/'");
+	}
+
+	if (path.find("//") != std::string::npos)
+	{
+		throw std::runtime_error("config file: location statement for " + path + " contains excessive slashes");
+	}
+	std::string brace;
+	iss >> brace;
+
+	if (brace != "{")
+	{
+		throw std::runtime_error("config file: too many location statements for " + path);
+	}
+	return (path);
+}
+
+void	validateAndParseRoot(std::istringstream &iss, LocationConfig &location)
+{
+	std::string root;
+
+	iss >> root;
+	if (root.find(';') != root.size() - 1)
+	{
+		throw std::runtime_error("config file:\nlocation " + location.path + " root not ending with ';");
+	}
+	root.pop_back();
+	if (!std::filesystem::is_directory(root))
+	{
+		throw std::runtime_error("config file:\nlocation " + location.path + " root is not a directory");
+	}
+	if (location.path != "/" && (!std::filesystem::is_directory(root + location.path) && !std::filesystem::is_regular_file(root + location.path) ))
+	{
+		throw std::runtime_error("config file:\nlocation " + location.path + " doesn't exist");
+	}
+	location.root = root;
+	if (iss >> root)
+	{
+		throw std::runtime_error("config file:\nlocation " + location.path + " root contains excessive info");
+	}
+}
+
+void	validateAndParseIndex(std::istringstream &iss, LocationConfig &location)
+{
+	std::string index;
+
+	iss >> index;
+	if (index.find(';') != index.size() - 1)
+	{
+		throw std::runtime_error("config file:\nlocation " + location.path + " index not ending with ';");
+	}
+	index.pop_back();
+	if (iss >> index)
+	{
+		throw std::runtime_error("config file:\nlocation " + location.path + " index contains excessive info");
+	}
+	location.index = index;
+}
+
+void	validateAndParseMethods(std::istringstream &iss, LocationConfig &location)
+{
+	std::string method;
+
+	while (iss >> method)
+	{
+		if (method != "GET" && method != "GET;" && method != "POST" && method != "POST;" && method != "DELETE" && method != "DELETE;")
+		{
+			throw std::runtime_error("config file:\nlocation " + location.path + " method not supported: " + method);
+		}
+		if (method.back() == ';')
+		{
+			break ;
+		}
+		location.methods.push_back(method);
+	}
+	if (method.back() != ';')
+	{
+		throw std::runtime_error("config file:\nlocation " + location.path + " method directive should end with ';'");
+	}
+	method.pop_back();
+	location.methods.push_back(method);
+	if (iss >> method)
+	{
+		throw std::runtime_error("config file:\nlocation " + location.path + " methods contain excessive info after ending: " + method);
+	}
+}
+
+void	validateAndParseAutoindex(std::istringstream &iss, LocationConfig &location)
+{
+	std::string autoindex;
+
+	iss >> autoindex;
+	if (autoindex.find(';') != autoindex.size() - 1)
+	{
+		throw std::runtime_error("config file:\nlocation " + location.path + " autoindex not ending with ';'");
+	}
+	autoindex.pop_back();
+	if (iss >> autoindex)
+	{
+		throw std::runtime_error("config file:\nlocation " + location.path + " autoindex contains excessive info after ;");
+	}
+	if (autoindex == "on")
+	{
+		location.autoindex = true;
+	}
+	else if (autoindex == "off")
+	{
+		location.autoindex = false;
+	}
+	else
+	{
+		throw std::runtime_error("config file:\nlocation " + location.path + " autoindex setting '" + autoindex + "' not supported");
+	}
+}
+
+void	validateAndParseUpload(std::istringstream &iss, LocationConfig &location)
+{
+	std::string upload;
+
+	iss >> upload;
+	if (upload.find(';') != upload.size() - 1)
+	{
+		throw std::runtime_error("config file:\nlocation " + location.path + " upload_store not ending with ';'");
+	}
+	upload.pop_back();
+	if (iss >> upload)
+	{
+		throw std::runtime_error("config file:\nlocation " + location.path + " upload_store contains excessive info after ;");
+	}
+	location.upload_store = upload;
+// SHOULD THERE BE ADDITIONAL CHECKS? TRY TO OPEN THE PATH (upload_store)?
+}
+
+LocationConfig	parseLocationConfig(std::vector<std::string> &config, std::vector<std::string>::iterator &it, std::istringstream &iss)
 {
 	LocationConfig	location;
 	std::string	key;
+	std::string path;
 
-	location.path = path;
-	location.autoindex = false;
-	location.return_code = 0;
-	location.return_url = "";
-
+	location.path = validateAndParseLocationPath(iss, *it);
+	it++;
 	while (it != config.end())
 	{
-	//	//std::cout << "it: " << *it << std::endl;
 		std::istringstream iss;
 		iss.str(*it);
 		iss >> key;
+		// std::cout << "it: " << *it << ", key: " << key << std::endl;
 		if (key == "root")
 		{
-			iss >> key;
-			key.pop_back();
-			location.root = key;
+			validateAndParseRoot(iss, location);
 		}
 		else if (key == "index")
 		{
-			iss >> key;
-			key.pop_back();
-			location.index = key;
+			validateAndParseIndex(iss, location);
 		}
 		else if (key == "methods")
 		{
-			while (iss >> key)
-			{
-				if (key.back() == ';')
-					key.pop_back();
-				location.methods.push_back(key);
-			}
+			validateAndParseMethods(iss, location);
 		}
 		else if (key == "autoindex")
 		{
-			iss >> key;
-			if (key == "on")
-			{
-				location.autoindex = true;
-			}
+			validateAndParseAutoindex(iss, location);
 		}
 		else if (key == "upload_store")
 		{
-			iss >> key;
-			if (key.back() == ';')
-			{
-				key.pop_back();
-			}
-			location.upload_store = key;
+			validateAndParseUpload(iss, location);
 		}
 		else if (key == "return")
 		{
@@ -159,43 +300,22 @@ LocationConfig	parseLocationConfig(std::vector<std::string> &config, std::vector
 		{
 			break ;
 		}
+		else
+		{
+			throw std::runtime_error("config file:\n\tserver's location block:\n\t\tunrecognised: " + key); // coulud be more detailed message.
+		}
 		it++;
 	}
 	return (location);
 
 }
 
-size_t	parseClientBodySize(std::string &client_max_size) // need to adjust this to work with bytes, not SI
+void	validateAndParseClientBodySize(std::istringstream &iss, ServerConfig &server)
 {
-	int	coefficient = 1;
+	std::string client_body;
 
-	if (client_max_size.find("K") != std::string::npos)
-	{
-		coefficient = 1024;
-	}
-	else if (client_max_size.find("M") != std::string::npos)
-	{
-		coefficient = 1024 * 1024;
-	}
-	else if (client_max_size.find("G") != std::string::npos)
-	{
-		coefficient = 1024 * 1024 * 1024;
-	}
-	return (std::stol(client_max_size) * coefficient); // add overflow handling later?
-}
+	iss >> client_body;
 
-void	validateListen(const std::string &ip_port)
-{
-	std::regex valid_ip(R"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\:\d{1,5}\;)"); // 1-3digits.1-3digits.1-3.digits.1-3digits:1-5digits;
-	if (!std::regex_match(ip_port, valid_ip))
-	{
-		throw std::runtime_error ("config file: listen IP and port in wrong format.");
-	}
-}
-
-
-void	validateBodySize(std::string &client_body, std::istringstream &iss)
-{
 	if (client_body.back() != ';')
 	{
 		throw std::runtime_error("config file: client_max_body_size directive missing semicolon");
@@ -205,6 +325,7 @@ void	validateBodySize(std::string &client_body, std::istringstream &iss)
 		throw std::runtime_error("config file: client_max_body_size directive contains excessive semicolon");
 	}
 	client_body.pop_back();
+
 	std::regex valid_body_size(R"(^\d{1,10}$|^\d{1,7}[kK]$|^\d{1,4}[mM]$)");
 
 	if (!std::regex_match(client_body, valid_body_size))
@@ -215,6 +336,21 @@ void	validateBodySize(std::string &client_body, std::istringstream &iss)
 	{
 		throw std::runtime_error("config file: client_max_body_size contains excessive info");
 	}
+	int	coefficient = 1;
+
+	if (client_body.find("K") != std::string::npos)
+	{
+		coefficient = 1000;
+	}
+	else if (client_body.find("M") != std::string::npos)
+	{
+		coefficient = 1000 * 1000;
+	}
+	else if (client_body.find("G") != std::string::npos)
+	{
+		coefficient = 1000 * 1000 * 1000;
+	}
+	server.client_max_body_size = std::stol(client_body) * coefficient;
 }
 
 void	validateAndParseErrorPage(std::istringstream &iss, ServerConfig &server)
@@ -275,8 +411,16 @@ void validateAndParseServerName(std::string &line, std::istringstream &iss, Serv
 	}
 }
 
-void	parseListen(std::string &ip_port, ServerConfig &server)
+void	validateAndParseListen(std::istringstream &iss, ServerConfig &server)
 {
+	std::string ip_port;
+	iss >> ip_port;
+
+	std::regex valid_ip(R"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\:\d{1,5}\;)"); // 1-3digits.1-3digits.1-3.digits.1-3digits:1-5digits;
+	if (!std::regex_match(ip_port, valid_ip))
+	{
+		throw std::runtime_error ("config file: listen IP and port in wrong format.");
+	}
 	ip_port.pop_back();
 	size_t colon = ip_port.find(":");
 
@@ -307,10 +451,7 @@ ServerConfig parseIndividualServer(std::vector<std::string> &config, std::vector
 		iss >> key;
 		if (key == "listen")
 		{
-			std::string ip_port;
-			iss >> ip_port;
-			validateListen(ip_port);
-			parseListen(ip_port, server);
+			validateAndParseListen(iss, server);
 		}
 		else if (key == "server_name")
 		{
@@ -318,10 +459,7 @@ ServerConfig parseIndividualServer(std::vector<std::string> &config, std::vector
 		}
 		else if (key == "client_max_body_size")
 		{
-			std::string max_size;
-			iss >> max_size;
-			validateBodySize(max_size, iss);
-			server.client_max_body_size = parseClientBodySize(max_size);
+			validateAndParseClientBodySize(iss, server);
 		}
 		else if (key == "error_page")
 		{
@@ -329,10 +467,7 @@ ServerConfig parseIndividualServer(std::vector<std::string> &config, std::vector
 		}
 		else if (key == "location")
 		{
-		//	//std::cout << "LOCATION FOUND!" << std::endl;
-			std::string	location;
-			iss >> location;
-			server.locations.push_back(parseLocationConfig(config, it, location));
+			server.locations.push_back(parseLocationConfig(config, it, iss));
 		}
 		else
 		{
