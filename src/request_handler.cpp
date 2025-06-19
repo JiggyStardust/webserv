@@ -126,7 +126,7 @@ static void handleDelete(Response &response, ServerConfig config)
 	// full_path = response.location.root + response.path;
 	full_path = "./www/images/directory/example.txt"; // now hardcoded, later the version above.
 
-	std::cout << "path: " << response.path << "\nroot: " << response.root << std::endl;
+	//std::cout << "path: " << response.path << "\nroot: " << response.root << std::endl;
 	try {
 		if (!std::ifstream(full_path)) {
 			throw std::runtime_error("Couldn't delete unexisting file: " + full_path);
@@ -204,21 +204,32 @@ static LocationConfig getLocation(std::string path, ServerConfig config) {
 	return empty_location;
 }
 
+static bool directoryIsMissingTrailingSlash(Response response) {
+	if (response.isDirectory == true && response.path.back() != '/')
+		return true;
+	else
+		return false;
+}
 
+static void handleDirectoryMissingTrailingSlash(Response response, ServerConfig config) {
+	(void)response;
+	(void)config;
+}
 
 Response getResponse(std::string request, ServerConfig config, int status_code) {
 	Response response;
 	std::istringstream iss(request);
 	iss >> response.method >> response.path >> response.version;
 
-	// std::cout << ">>>" << "-------------------------------------------" << std::endl;
-	response.location = getLocation(response.path, config);
 	// std::cout << ">>>" << "Path: " << response.path << std::endl;
-	// std::cout << ">>>" << "Location: " << response.location.path << std::endl;
+	response.location = getLocation(response.path, config);
+	response.isDirectory = std::filesystem::is_directory(response.path);
 
 	parseHeader(request);
 	if (status_code != 200)
 		handleError(response, config, status_code);
+	else if (directoryIsMissingTrailingSlash(response))
+		handleDirectoryMissingTrailingSlash(response, config);
 	else if (response.method == "GET")
 		handleGet(response, config);
 	else if (response.method == "DELETE")

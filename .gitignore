@@ -3,3 +3,5 @@ webserv
 a.out
 .vscode/
 ethan_notes.txt
+__pycache__
+.pytest_cache

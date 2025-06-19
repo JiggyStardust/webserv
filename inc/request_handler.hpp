@@ -9,6 +9,7 @@
 #include <iostream>
 #include <map>
 #include <utility> //swap
+#include <filesystem> //is_directory
 
 struct Response {
 	int			status_code = 200;
@@ -18,9 +19,9 @@ struct Response {
 	std::string path = "";
 	std::string version = "";
 
-	std::string root = "";
-
 	LocationConfig location;
+
+	bool isDirectory = false;
 
 	std::string body = "";
 	std::string header = "";
