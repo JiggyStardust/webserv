@@ -387,8 +387,7 @@ void Request::getResponse(int status_code) {
 	// }
 
 	// if request looks like CGI
-	// set cgi_pid to the pid of the process
-	// state = WAIT_CGI;
+		// is_cgi = true;
 
 	
 
