@@ -73,7 +73,7 @@ public:
 	void								setConfig();
 
 	// GET calls this directly
-	void handleCompleteRequest(size_t body_start, size_t body_length, int status);
+	void handleCompleteRequest(int status);
 
 	// check if body is received and then call handleCompleteRequest()
 	e_req_state handlePost(size_t body_start);
@@ -88,6 +88,7 @@ public:
 	void getResponse(int status_code);
 	int getPostContentLength (std::string request);
 	bool isPostAllowed(std::string path, ServerConfig config);
+	e_req_state handleChunked(size_t header_end, bool isInitialRecv);
 
 private:
 	std::vector<ServerConfig>			all_configs;
@@ -96,4 +97,5 @@ private:
 	Response						response;
 	std::map<std::string, std::string>	headers;
 	bool								is_cgi = false;
+	bool								receiving_chunked = false;
 };
