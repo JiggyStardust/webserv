@@ -5,6 +5,7 @@
 #include "StandardLibraries.hpp"
 #include "Structs.hpp"
 #include "Webserv.hpp"
+#include <fstream>
 
 
 const std::map<std::string, std::string> extensions {
@@ -92,10 +93,13 @@ public:
 
 private:
 	std::vector<ServerConfig>			all_configs;
-	ServerConfig					config;
+	ServerConfig						config;
 	std::string							raw_request;
-	Response						response;
+	Response							response;
 	std::map<std::string, std::string>	headers;
 	bool								is_cgi = false;
 	bool								receiving_chunked = false;
+	bool								has_infile = false;
+	std::string							filename_infile;
+	int									infile_fd;
 };

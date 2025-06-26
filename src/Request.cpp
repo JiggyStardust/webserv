@@ -1,4 +1,6 @@
 #include "../inc/Request.hpp"
+#include <fcntl.h>
+#include <fstream>
 
 
 const static std::string header_terminator = "\r\n\r\n";
@@ -11,12 +13,15 @@ e_req_state	Request::addToRequest(std::string part) {
 
 	raw_request += std::string(part);
 
+	// headers will not be parsed multiple times when they have already been
+	// received
 	if (receiving_chunked) {
 		e_req_state chunked_state = handleChunked(0, false);
 		if (chunked_state == RECV_MORE) {
 			return RECV_MORE;
 		}
 		handleCompleteRequest(200);
+		return READY;
 	}
 
 	if (headerIsComplete()) {
@@ -90,15 +95,54 @@ void Request::handleCompleteRequest(int status)
 	getResponse(status);
 }
 
+// returns true when the final chunk has bee parsed
+static bool extractChunks(std::string &buf, std::vector<std::string> &chunks) {
+	static int left_to_read = 0;
+
+	std::string chunk;
+	std::istringstream stream(buf);
+
+	if (left_to_read == 0) {
+		stream >> std::hex >> left_to_read;
+		std::cout << "left_to_read: " << left_to_read << std::endl;
+	} else {
+		// read left_to_read bytes
+	}
+
+	return true;
+}
+
 e_req_state Request::handleChunked(size_t header_end, bool isInitialRecv) {
+	std::cout << "handleChunked(): " << raw_request << std::endl;
+
+	std::vector<std::string> chunks;
+	bool wasFinalChunk = false;
+	
+	// TODO: generate filename
+	filename_infile = "tmp_chunked";
+
 	if (isInitialRecv) {
-		// skip to end of header
-		// create file
-		// write to file
-		// erase raw_request
+		infile_fd = open(filename_infile.c_str(), O_APPEND);
+		receiving_chunked = true;
+		has_infile = true;
+		raw_request.erase(0, header_end);
 	} else {
 		//append to file
 		//erase raw_request
+		//close file if done
+	}
+	wasFinalChunk = extractChunks(raw_request, chunks);
+	raw_request = "";
+	for (auto it = chunks.begin(); it != chunks.end(); it++) {
+		write(infile_fd, it->c_str(), it->length());
+	}
+	if (wasFinalChunk) {
+		// TODO: do we need to reset receiving_chunked or will the Request
+		// always be destroyed after this?
+		close(infile_fd);
+		return READY;
+	} else {
+		return RECV_MORE;
 	}
 }
 
@@ -109,8 +153,14 @@ e_req_state Request::handlePost(size_t header_end) {
 	if (headers.find("transfer-encoding") != headers.end()) {
 		if (headers.at("transfer-encoding") == "chunked") {
 			std::cout << "receiving chunked transfer" << std::endl;
-			// TODO: implement checks for chunked transfer xD
-			return handleChunked(header_end, true);
+			
+			// TODO: this reads weird
+			if (!receiving_chunked) {
+				return handleChunked(header_end, true);
+			} else {
+				return handleChunked(header_end, false);
+			}
+
 		}
 		// header has transfer-encoding but it is not set to chunked =>
 		// we proceed to look for content-length
@@ -121,7 +171,7 @@ e_req_state Request::handlePost(size_t header_end) {
 
 	// content-length missing
 	if (headers.find("content-length") == headers.end()) {
-		handleCompleteRequest(header_end, 0, 411);
+		handleCompleteRequest(411);
 		return READY;
 	}
 
@@ -139,12 +189,12 @@ e_req_state Request::handlePost(size_t header_end) {
 	if (config.client_max_body_size != 0
 		&& content_length > config.client_max_body_size) {
 		std::cerr << "Client body length larger than allowed" << std::endl;
-		handleCompleteRequest(header_end, 0, 413);
+		handleCompleteRequest(413);
 		return READY;
 	}
 	// happy path
 	if (raw_request.length() >= header_end + content_length) {
-		handleCompleteRequest(header_end, content_length, 200);
+		handleCompleteRequest(200);
 		return READY;
 	} else {
 		return RECV_MORE;
