@@ -100,6 +100,8 @@ void Client::sendTo() {
 		t_cgi_state cgi_result = cgi.checkCgi(); // this has waitpid
 		if (cgi_result == CGI_READY) {
 			state = SEND;
+		} else {
+			return;
 		}
 	} else {
 		if (send_queue.size() < 1) {

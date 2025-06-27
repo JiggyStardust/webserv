@@ -9,7 +9,8 @@ Request::Request(std::vector<ServerConfig> configs) : all_configs(configs) {}
 
 e_req_state	Request::addToRequest(std::string part) {
 
-	std::cout << "addToRequest()" << part <<std::endl;
+	// std::cout << "addToRequest()" << part <<std::endl;
+	std::cout << "addToRequest()" << std::endl;
 
 	raw_request += std::string(part);
 
@@ -95,51 +96,83 @@ void Request::handleCompleteRequest(int status)
 	getResponse(status);
 }
 
-// returns true when the final chunk has bee parsed
-static bool extractChunks(std::string &buf, std::vector<std::string> &chunks) {
+// returns true when the final chunk has been parsed
+static bool extractChunks(std::string &raw_request,
+						  std::vector<std::string> &chunks)
+{
 	static int left_to_read = 0;
 
 	std::string chunk;
-	std::istringstream stream(buf);
 
-	if (left_to_read == 0) {
-		stream >> std::hex >> left_to_read;
-		std::cout << "left_to_read: " << left_to_read << std::endl;
-	} else {
-		// read left_to_read bytes
+	while (true) {
+		if (left_to_read == 0) {
+			try {
+				raw_request.erase(0, raw_request.find_first_not_of("\r\n"));
+				std::string tmp = raw_request.substr(0, raw_request.find("\r\n"));
+				left_to_read = std::stoi(tmp, nullptr, 16);
+				raw_request.erase(0, tmp.length() + 2);
+				std::cout << "left_to_read: " << left_to_read << std::endl;
+			} catch (...) {
+				std::cerr << "Request::extractChunks(): failed to parse chunk"
+					"size" << std::endl;
+				// TODO: propagate error to return error page
+				return true;
+			}
+			// end of transmission is signaled by a chunk of size zero
+			if (left_to_read == 0) {
+				return true;
+			}
+		}
+		// if we found an entire chunk, then remove the \r\n
+		if (raw_request.length() > left_to_read) {
+			chunk = raw_request.substr(0, left_to_read);
+			raw_request.erase(0, left_to_read);
+			left_to_read = 0;
+		} else {
+			chunk = raw_request;
+			raw_request = "";
+		}
+		chunks.push_back(chunk);
+		// break the loop
+		if (raw_request.length() == 0) {
+			return false;
+		}
 	}
-
-	return true;
 }
 
 e_req_state Request::handleChunked(size_t header_end, bool isInitialRecv) {
-	std::cout << "handleChunked(): " << raw_request << std::endl;
+	 std::cout << "handleChunked(): " << raw_request << std::endl;
 
 	std::vector<std::string> chunks;
 	bool wasFinalChunk = false;
 	
-	// TODO: generate filename
+	// TODO: generate filename with utils.hpp
+	// TODO: if is initial recv check that generated filename doesnt already
+	// exist; generate new names until we get a non existent one
 	filename_infile = "tmp_chunked";
 
+	// ios::ate => write to the end of the file
+	std::ofstream file(filename_infile, std::ios::app);
+
 	if (isInitialRecv) {
-		infile_fd = open(filename_infile.c_str(), O_APPEND);
+		std::cout << "handleChunked(): initial call" << std::endl;
 		receiving_chunked = true;
 		has_infile = true;
 		raw_request.erase(0, header_end);
 	} else {
-		//append to file
-		//erase raw_request
-		//close file if done
+		std::cout << "handleChunked(): further call" << std::endl;
 	}
+
 	wasFinalChunk = extractChunks(raw_request, chunks);
-	raw_request = "";
 	for (auto it = chunks.begin(); it != chunks.end(); it++) {
-		write(infile_fd, it->c_str(), it->length());
+		file.write(it->c_str(), it->length());
 	}
+	file.close();
 	if (wasFinalChunk) {
+		std::cout << "handleChunked(): final chunk" << std::endl;
 		// TODO: do we need to reset receiving_chunked or will the Request
 		// always be destroyed after this?
-		close(infile_fd);
+		receiving_chunked = false;
 		return READY;
 	} else {
 		return RECV_MORE;
