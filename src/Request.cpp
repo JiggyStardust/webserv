@@ -373,7 +373,7 @@ void Request::handleDelete()
 {
 	std::string	full_path;
 
-	// full_path = location.root + path;
+	// 
 	full_path = "./www/images/directory/example.txt"; // now hardcoded, later the version above.
 
 	std::cout << "path: " << _path << "\nroot: " << _location.root << std::endl;
@@ -509,7 +509,7 @@ void Request::printRequest() {
 }
 
 void Request::handleCgi() {
-	if (_location.cgi_path_py != "/usr/bin/python3")
+	if (_location.cgi_path_py == "")
 		handleError(400);
 	else
 		_is_cgi = true;
