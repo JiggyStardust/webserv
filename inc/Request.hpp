@@ -6,6 +6,10 @@
 #include "Webserv.hpp"
 #include "PostFile.hpp"
 
+#define GET 0
+#define POST 1
+#define DELETE 2
+
 const std::map<std::string, std::string> extensions {
 	{".aac", "audio/aac"},
 	{".bmp", "image/bmp"},
@@ -133,6 +137,8 @@ public:
 	e_req_state							getState();
 
 	bool								getConnectionTypeIsClose();
+	std::string							getPostBodyFilename();
+	int									getMethod();
 
 private:
 	std::vector<ServerConfig>			_all_configs;

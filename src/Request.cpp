@@ -228,7 +228,10 @@ void	Request::initialPost() {
 		std::cerr << std::endl;
 		// TODO: handle invalid value in content-length
 	}
-
+	if (_content_length == 0)
+	{
+		std::cout << "CONTENT-LENGTH = 0\n";
+	}
 	// client wants to send too big of a body
 	if (_config.client_max_body_size != 0
 		&& _content_length > _config.client_max_body_size) {
@@ -295,6 +298,26 @@ bool			Request::getIsCgi() {
 
 bool			Request::getConnectionTypeIsClose() {
 	return _connection_type_is_close;
+}
+
+std::string		Request::getPostBodyFilename(){
+	return _post_body_filename;
+}
+
+int			Request::getMethod(){
+	if (_method == "GET")
+	{
+		return GET;
+	}
+	if (_method == "POST")
+	{
+		return POST;
+	}
+	if (_method == "DELETE")
+	{
+		return DELETE;
+	}
+	return 4; // this is nothing now == GIBBERISH
 }
 
 e_req_state	Request::getState() {

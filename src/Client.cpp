@@ -123,9 +123,12 @@ void Client::recvFrom() {
 void Client::sendTo() {
 	std::string to_send = "";
 	if (state == WAIT_CGI) {
-		std::cout << "DOING CGI" << std::endl;
+		// std::cout << "DOING CGI" << std::endl;
 		t_cgi_state cgi_result = cgi.checkCgi(); // this has waitpid
 		if (cgi_result == CGI_READY) {
+			if (request.getMethod() == POST){
+				std::remove(request.getPostBodyFilename().c_str());
+			}
 			try {
 				Response tmp;
 				tmp.full_response = fileToString(cgi.output_filename);
@@ -137,7 +140,21 @@ void Client::sendTo() {
 			}
 
 			state = SEND;
-		} else {
+		}
+		else if (cgi_result == CGI_TIMEOUT || cgi_result == CGI_FAILED)
+		{
+			try {
+				std::remove(cgi.output_filename.c_str());
+			} catch (...){}
+			try {
+				request.getResponse(500);
+				send_queue.push_back(request.getRes());
+				state = SEND;
+			} catch (const std::ios_base::failure& e){
+				// TODO how to handle error from client?
+			}
+		}
+		 else {
 			return;
 		}
 	} else {

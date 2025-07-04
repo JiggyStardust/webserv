@@ -88,7 +88,7 @@ void	checkClientTimeout(std::map<int, Client> &clients)
 		time_t	latest_event = it->second.getLastEvent();
 		time_t	current_time = std::time(nullptr);
 		
-		if (current_time - latest_event >= 5)
+		if (current_time - latest_event >= 10)
 		{
 			std::cout << "\n\n\n\ntrying to setState of the Client[" << it->second.getClientFd() << "], whose latest events is at: \n"
 			<< std::asctime(std::localtime(&latest_event)) << "now its: " << std::asctime(std::localtime(&current_time)) << std::endl;
