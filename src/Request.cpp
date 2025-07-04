@@ -9,17 +9,11 @@ Request::Request(std::vector<ServerConfig> configs) : _all_configs(configs) {
 
 void	Request::addToRequest(std::string part) {
 
-	// std::cout << "addToRequest()" << std::endl;
-	// std::cout << part << std::endl;
+	std::cout << "addToRequest()" << std::endl;
+	std::cout << part << std::endl;
 
 	_raw_request += std::string(part);
 
-	if (_state == INITIAL_RECV && !headerIsComplete()) {
-		_state = RECV_MORE;
-		return ;
-	}
-	// headers will not be parsed multiple times when they have already been
-	// received
 	if (_receiving_chunked) {
 		handleChunked();
 		if (_state == READY) {
@@ -28,7 +22,34 @@ void	Request::addToRequest(std::string part) {
 		return ;
 	}
 
-	if (_state == INITIAL_RECV) {
+	if (_state == INITIAL_RECV && !headerIsComplete()) {
+		_state = RECV_HEADER;
+		return ;
+	}
+
+	if (_state == RECV_HEADER) {
+		if (!headerIsComplete()) {
+			if (_raw_request.length() >= 6) {
+				if (_raw_request.substr(3) != "GET" &&
+					_raw_request.substr(4) != "POST" &&
+					_raw_request.substr(6) != "DELETE")
+				{
+					std::cerr << "Request::addToRequest(): no method field" << std::endl;
+					handleCompleteRequest(400);
+					return ;
+				}
+			} else {
+				// try to receive more header
+				return ;
+			}
+
+		} else {
+			// looks like we have complete header
+			_state = RECV_MORE;
+		}
+	}
+
+	if (_state == RECV_MORE) {
 		size_t body_start =
 			_raw_request.find(header_terminator) + header_terminator.length();
 
@@ -52,6 +73,8 @@ void	Request::addToRequest(std::string part) {
 		else if (method->second == "GET" || method->second == "DELETE") {
 			handleCompleteRequest(200);
 			return ;
+		} else if (method->second == "POST") {
+			handlePost();
 		}
 		else if (
 			method->second != "GET" &&
@@ -63,10 +86,12 @@ void	Request::addToRequest(std::string part) {
 			return ;
 		}
 	}
-	auto method = _headers.find("method");
-	if (method != _headers.end() && method->second == "POST"){
-		handlePost();
-	}
+
+	// when RECV_MORE and not chunked, we end up directly here
+	// auto method = _headers.find("method");
+	// if (method != _headers.end() && method->second == "POST"){
+	// 	handlePost();
+	// }
 }
 
 void	Request::setConfig() {

@@ -68,7 +68,8 @@ const std::map<int, std::string> errorHttps {
 
 typedef enum {
 	INITIAL_RECV,
-	RECV_MORE,
+	RECV_HEADER, // need to receive header
+	RECV_MORE, //header received ok
 	READY
 } e_req_state;
 
