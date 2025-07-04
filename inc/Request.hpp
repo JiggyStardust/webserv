@@ -34,9 +34,9 @@ const std::map<std::string, std::string> extensions {
 };
 
 const std::map<int, std::string> errorCodes {
-	{100, "Continue"},					//Continue the reqest
+	{100, "Continue"},					//Continue the request
 	{200, "OK"},						//OK
-	(201, "Created"), 					//A new resource was created by POST
+	{201, "Created"},					//A new resource was created by POST
 	{301, "Moved Permanently"},			//Redirect error
 	{400, "Bad Request"},				//Malformed request syntax
 	{403, "Forbidden"}, 				//Understood the request but refused to fulfill it
