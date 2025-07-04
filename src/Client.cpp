@@ -147,7 +147,7 @@ void Client::sendTo() {
 				std::remove(cgi.output_filename.c_str());
 			} catch (...){}
 			try {
-				request.getResponse(500);
+				request.getResponse(504);
 				send_queue.push_back(request.getRes());
 				state = SEND;
 			} catch (const std::ios_base::failure& e){
