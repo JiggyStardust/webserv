@@ -15,6 +15,33 @@ import http.client
 import socket
 import time
 
+def test_new():
+	s = socket.socket()
+	s.connect(('127.0.0.1', 8080))
+
+	req = "GET / HTTP/1.1\r\n\r\n"
+	req2 = "GET / HTTP/1.2\r\n\r\n"
+
+	s.send(req.encode())
+	response = s.recv(1024)
+	response_text = response.decode('utf-8', errors='ignore')
+	full_status_line = response_text.split('\r\n')[0]
+	print("Status Line:", full_status_line)
+	split_status_line = full_status_line.split()
+	status_code = split_status_line[1]
+	print("Status:", split_status_line[1])
+	assert status_code == '200'
+
+	s.send(req2.encode())
+	response = s.recv(1024)
+	response_text = response.decode('utf-8', errors='ignore')
+	full_status_line = response_text.split('\r\n')[0]
+	print("Status Line:", full_status_line)
+	split_status_line = full_status_line.split()
+	status_code = split_status_line[1]
+	print("Status:", split_status_line[1])
+	assert status_code == '505'
+
 def test_200_get_root():
 	response = requests.get("http://127.0.0.1:8080/")
 	assert response.status_code == 200
